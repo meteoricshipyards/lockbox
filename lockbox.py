@@ -26,7 +26,7 @@ HINT = ""   # Password hint
 
 About = "LockBox - a password organizer \n\n\
 (C)2022 Tom Arachtingi    Ver 0.9.0330L\n\
-Including RC4 code https://github.com/manojpandey/rc4"
+Including RC4 code from https://github.com/manojpandey/rc4"
 
 class PWObj :
     pwDisplay = "{:<16} {:<32} {:<16} {:0>4d}/{:0>2d}/{:0>2d}"
@@ -510,8 +510,11 @@ def running_windows():
 
     
 def getPW(hint=None,title=None) : 
-    # hint will be None if this is the first time running.
     # ask for the password
+    # starts with password obscured, but has buttons to show (and then to hide) it.
+
+    # hint will be None if this is the first time running.
+
     obscure = '*'
     if title is None :
         thetitle = 'Enter PW'
@@ -519,16 +522,68 @@ def getPW(hint=None,title=None) :
         thetitle = title
 
     if hint is None :
-        obscure = ""
         text = 'Enter the Key for securing your passwords'
     else :
         print('getpw hint = ',hint)
         text = 'Hint: '+hint
+    initText = ""    
+    obscure = '*'
+    ob_state = True
+    # New method - old one just put up a popup - limitted control
+    #   With this method, we put up a modal window, and close it after an input.  If the
+    #   show or hide button is pressed, adjust the obscure character, and switch control buttons.
+    #   One user-unfriendly aspect of this is that just hitting enter on the password field doesn't
+    #   cause it to accept the password.
+    redo_window = True
+    while True :
+        if redo_window :
+            #print('setting up pw window ')
+            pwlayout = [[ sg.T(text)] ,
+                    [sg.InputText(default_text=initText, key="__PW__",password_char=obscure,
+                                  enable_events=True, focus=True) ],
+                    [sg.Button("OK", key='__PW_OK__',bind_return_key=True), sg.Button("Cancel",key='__PW_Cancel__'),
+                     sg.Button("Show PW",key='__PW_Show__',visible=ob_state),
+                     sg.Button("Hide PW",key='__PW_Hide__',visible=not ob_state)]
+                    ]
+            redo_window = False
 
-    thePW = sg.popup_get_text(text, title=thetitle, password_char=obscure)
+            pwWindow = sg.Window( thetitle, pwlayout, modal=True, keep_on_top=True,
+                                    resizable=True)
+        #                           resizable=True).read(close=True)
+
+        event, values = pwWindow.read()
+        #print('event ', event, ' values ',values)
+        if event == '__PW_Cancel__' or event == sg.WIN_CLOSED :
+            pwWindow.close()
+            return None
+        elif event == '__PW_Show__' :
+            initText = values['__PW__']
+            obscure = ''
+            ob_state = False
+            pwWindow.close()
+            redo_window = True
+        elif event == '__PW_Hide__' :
+            initText = values['__PW__']
+            obscure = '*'
+            ob_state = True
+            pwWindow.close()
+            redo_window = True
+        elif event == '__PW_OK__' :
+            pwWindow.close()
+            return values['__PW__'].strip()
+        elif event == '__PW__' :
+            # keep processing characters
+            pass
+                 
+
+    """
+    # Old method - didn't allow the hiding and unhiding of the password.  
+    
+    thePW = sg.popup_get_text(text,title=thetitle)
     if thePW is None :
         return None
     return thePW.strip()
+    """
 
 
     
